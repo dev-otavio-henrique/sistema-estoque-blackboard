@@ -1,6 +1,5 @@
 package com.estoque.service;
 
-import com.estoque.dto.CompraAvulsoResponseDTO;
 import com.estoque.model.*;
 import com.estoque.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,87 +64,53 @@ public class SugestaoReposicaoService {
         return sugestaoRepository.save(sugestao);
     }
 
-    /**
-     * Compra avulsa: o gerente compra produtos diretamente sem uma sugestão prévia.
-     * Executa imediatamente, atualizando o estoque e registrando o histórico.
-     */
+  
     @Transactional
-    public CompraAvulsoResponseDTO compraAvulso(Long produtoId, Long lojaId, Integer quantidade) {
+    public SugestaoReposicao compraAvulso(Long produtoId, Long lojaId, Integer quantidade) {
 
         Produto produto = produtoRepository.findById(produtoId)
             .orElseThrow(() -> new RuntimeException("Produto não encontrado: ID " + produtoId));
         Loja loja = lojaRepository.findById(lojaId)
             .orElseThrow(() -> new RuntimeException("Loja não encontrada: ID " + lojaId));
-
         Estoque estoque = estoqueRepository.findByProdutoAndLoja(produto, loja)
-            .orElseThrow(() -> new RuntimeException(
-                "Estoque não encontrado para " + produto.getNome() + " na loja " + loja.getNome()));
+            .orElseGet(() -> {
+                Estoque novo = new Estoque();
+                novo.setProduto(produto);
+                novo.setLoja(loja);
+                novo.setQuantidadeAtual(0);
+                return estoqueRepository.save(novo);
+            });
 
-        // Busca o fornecedor mais barato para calcular o custo
         List<FornecedorCatalogo> fornecedores = fornecedorCatalogoRepository.findByProduto(produto);
-        FornecedorCatalogo melhorFornecedor = null;
-        Double precoUnitario = 0.0;
-        Double totalCusto = 0.0;
-
-        if (!fornecedores.isEmpty()) {
-            melhorFornecedor = fornecedores.stream()
-                .min((a, b) -> a.getPrecoCompra().compareTo(b.getPrecoCompra()))
-                .orElse(null);
-            if (melhorFornecedor != null) {
-                precoUnitario = melhorFornecedor.getPrecoCompra();
-                totalCusto = precoUnitario * quantidade;
-            }
-        }
-
-        // Atualiza o estoque imediatamente
+        FornecedorCatalogo melhorFornecedor = fornecedores.stream()
+            .min((a, b) -> a.getPrecoCompra().compareTo(b.getPrecoCompra()))
+            .orElse(null);
         int novoEstoque = estoque.getQuantidadeAtual() + quantidade;
         estoque.setQuantidadeAtual(novoEstoque);
         estoqueRepository.save(estoque);
-
-        // Registra a compra no histórico como EXECUTADA
         SugestaoReposicao compra = new SugestaoReposicao();
         compra.setTipoAcao("ORDEM_COMPRA");
         compra.setProduto(produto);
         compra.setLojaDestino(loja);
         compra.setQuantidadeRecomendada(quantidade);
         compra.setStatus("EXECUTADA");
-
         String justificativa = "Compra avulsa de " + quantidade + "x " + produto.getNome()
             + " para " + loja.getNome() + ".";
 
         if (melhorFornecedor != null) {
             compra.setFornecedor(melhorFornecedor.getFornecedor());
             justificativa += " Fornecedor: " + melhorFornecedor.getFornecedor().getNome()
-                + " | Preço unitário: R$ " + String.format("%.2f", precoUnitario)
-                + " | Total: R$ " + String.format("%.2f", totalCusto);
+                + " | Preço unitário: R$ " + String.format("%.2f", melhorFornecedor.getPrecoCompra());
         } else {
             justificativa += " Nenhum fornecedor cadastrado para este produto.";
         }
-
         compra.setJustificativa(justificativa);
-        SugestaoReposicao salva = sugestaoRepository.save(compra);
-
         System.out.println("[COMPRA AVULSA] " + quantidade + "x " + produto.getNome()
             + " → " + loja.getNome() + " | Novo estoque: " + novoEstoque);
-
-        // Monta a resposta com todas as informações para o frontend
-        CompraAvulsoResponseDTO response = new CompraAvulsoResponseDTO();
-        response.setId(salva.getId());
-        response.setProdutoNome(produto.getNome());
-        response.setLojaNome(loja.getNome());
-        response.setQuantidade(quantidade);
-        response.setNovoEstoque(novoEstoque);
-        response.setPrecoUnitario(precoUnitario);
-        response.setTotalCusto(totalCusto);
-        response.setFornecedorNome(
-            melhorFornecedor != null
-                ? melhorFornecedor.getFornecedor().getNome()
-                : "Sem fornecedor cadastrado"
-        );
-
-        return response;
+        return sugestaoRepository.save(compra);
     }
-
+    
+    
     private void executarTransferencia(SugestaoReposicao sugestao) {
         int quantidade = sugestao.getQuantidadeRecomendada();
         Estoque estoqueOrigem = estoqueRepository

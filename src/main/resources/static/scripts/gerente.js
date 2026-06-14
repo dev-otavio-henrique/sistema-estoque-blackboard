@@ -154,8 +154,7 @@ function montarSugestoes(sugestoes) {
                     💬 <strong>Justificativa automática:</strong> ${s.justificativa}
                 </div>
                 <div class="sugestao-acoes">
-                    <button class="btn verde sm" onclick="acao(${s.id}, 'executada')">✅ Executar</button>
-                    <button class="btn laranja sm" onclick="acao(${s.id}, 'aprovar')">👍 Aprovar</button>
+                    <button class="btn verde sm" onclick="acao(${s.id}, 'aprovar')">👍 Aprovar</button>
                     <button class="btn vermelho sm" onclick="acao(${s.id}, 'rejeitar')">❌ Rejeitar</button>
                 </div>
             </div>`;
@@ -165,26 +164,40 @@ function montarSugestoes(sugestoes) {
 
 async function acao(id, tipo) {
     try {
-        const resp = await fetch(`/api/sugestoes/${id}/${tipo}`, { method: 'PATCH' });
-        if (!resp.ok) throw new Error(await resp.text());
-        await carregarSugestoes();
-        if (tipo === 'executada') {
-            await carregarDashboard();
-            alert('✅ Sugestão executada! O estoque foi atualizado automaticamente.');
+        if (tipo === 'aprovar') {
+            const resp = await fetch(`/api/sugestoes/${id}/aprovar`, { method: 'PATCH' });
+            if (!resp.ok) throw new Error(await resp.text());
+            await carregarSugestoes();
+            alert('👍 Sugestão aprovada! Os produtos estão a caminho!');
+            // executa após 10 segundos (simula tempo de compra/transferência)
+            setTimeout(async () => {
+                try {
+                    const respExec = await fetch(`/api/sugestoes/${id}/executada`, { method: 'PATCH' });
+                    if (respExec.ok) {
+                        await carregarSugestoes();
+                        await carregarDashboard();
+                    }
+                } catch (e) {
+                    console.error('[BLACKBOARD] Erro ao executar sugestão automaticamente:', e);
+                }
+            }, 10000);
+        } else if (tipo === 'rejeitar') {
+            const resp = await fetch(`/api/sugestoes/${id}/rejeitar`, { method: 'PATCH' });
+            if (!resp.ok) throw new Error(await resp.text());
+            await carregarSugestoes();
         }
     } catch (e) {
         alert('❌ Erro: ' + e.message);
     }
 }
 
-// ═══ Modal: Compra Avulsa ═══
 
-// Carrega as opções de loja e produto no dropdown do modal
 async function carregarDropdownsModal() {
     try {
-        const [lojas, produtos] = await Promise.all([
+        const [lojas, produtos, fornecedores] = await Promise.all([
             fetch('/api/lojas').then(r => r.json()),
-            fetch('/api/produtos').then(r => r.json())
+            fetch('/api/produtos').then(r => r.json()),
+            fetch('/api/fornecedores').then(r => r.json())
         ]);
 
         const selLoja = document.getElementById('modal-loja');
@@ -199,26 +212,23 @@ async function carregarDropdownsModal() {
             selProduto.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
         });
 
-        // Reutiliza as mesmas listas nos formulários de cadastro
-        const selProdCad = document.getElementById('prod-select-cad');
-        if (selProdCad) {
-            selProdCad.innerHTML = '<option value="">Selecione...</option>';
-            produtos.forEach(p => {
-                selProdCad.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+        const selProdForn = document.getElementById('prod-fornecedor');
+        if (selProdForn) {
+            selProdForn.innerHTML = '<option value="">Selecione um fornecedor...</option>';
+            fornecedores.forEach(f => {
+                selProdForn.innerHTML += `<option value="${f.id}">${f.nome}</option>`;
             });
         }
     } catch (e) {
-        console.error('Erro ao carregar dropdowns do modal:', e);
+        console.error('Erro ao carregar dropdowns:', e);
     }
 }
 
+
 function abrirModalCompra() {
-    // Limpa resultados anteriores antes de abrir
-    document.getElementById('resultado-compra').style.display = 'none';
     document.getElementById('modal-loja').value = '';
     document.getElementById('modal-produto').value = '';
     document.getElementById('modal-quantidade').value = '1';
-    document.getElementById('btn-finalizar-compra').style.display = 'inline-flex';
     document.getElementById('modal-overlay').classList.add('aberto');
 }
 
@@ -248,26 +258,12 @@ async function finalizarCompraAvulsa() {
         });
 
         if (!resp.ok) throw new Error(await resp.text());
-        const resultado = await resp.json();
 
-        // Esconde o botão de finalizar e mostra o resultado com o custo
-        document.getElementById('btn-finalizar-compra').style.display = 'none';
-
-        const divResultado = document.getElementById('resultado-compra');
-        divResultado.style.display = 'block';
-        divResultado.innerHTML = `
-            <h4>✅ Compra realizada com sucesso!</h4>
-            <div class="linha"><span>Produto:</span><span><strong>${resultado.produtoNome}</strong></span></div>
-            <div class="linha"><span>Loja destino:</span><span>${resultado.lojaNome}</span></div>
-            <div class="linha"><span>Fornecedor:</span><span>${resultado.fornecedorNome}</span></div>
-            <div class="linha"><span>Quantidade comprada:</span><span>${resultado.quantidade} unidades</span></div>
-            <div class="linha"><span>Preço unitário:</span><span>${formatarMoeda(resultado.precoUnitario)}</span></div>
-            <div class="linha total"><span>💰 Custo total da compra:</span><span>${formatarMoeda(resultado.totalCusto)}</span></div>
-            <div class="linha"><span>Novo estoque na loja:</span><span><strong>${resultado.novoEstoque} unidades</strong></span></div>
-        `;
-
-        // Atualiza o dashboard em segundo plano pois o estoque mudou
-        carregarDashboard();
+        fecharModalCompra();
+        alert('✅ Compra finalizada! Os produtos estão a caminho!');
+        setTimeout(async () => {
+            await carregarDashboard();
+        }, 10000);
 
     } catch (e) {
         alert('❌ Erro ao realizar compra: ' + e.message);
@@ -401,22 +397,48 @@ async function cadastrarProduto() {
     const categoria = document.getElementById('prod-cat').value;
     const preco_venda = parseFloat(document.getElementById('prod-preco').value);
     const limiar_critico = parseInt(document.getElementById('prod-limiar').value);
+    const fornecedorId = document.getElementById('prod-fornecedor').value;
+    const precoCompra = parseFloat(document.getElementById('prod-preco-compra').value);
 
     if (!nome || !preco_venda || !limiar_critico) {
-        msg('msg-produto', '⚠️ Preencha nome, preço e limiar.', 'erro');
+        msg('msg-produto', '⚠️ Preencha nome, preço de venda e limiar crítico.', 'erro');
         return;
     }
+
+    // Fornecedor agora é obrigatório
+    if (!fornecedorId || !precoCompra || isNaN(precoCompra) || precoCompra <= 0) {
+        msg('msg-produto', '⚠️ Selecione um fornecedor e informe o preço de compra.', 'erro');
+        return;
+    }
+
     try {
+        // Passo 1: cria o produto
         const resp = await fetch('/api/produtos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nome, categoria, preco_venda, limiar_critico })
         });
         if (!resp.ok) throw new Error(await resp.text());
-        msg('msg-produto', '✅ Produto cadastrado com sucesso!');
-        ['prod-nome', 'prod-cat', 'prod-preco', 'prod-limiar'].forEach(id =>
-            document.getElementById(id).value = '');
+        const produto = await resp.json();
+
+        // Passo 2: vincula o fornecedor ao produto (agora sempre executa)
+        const respCat = await fetch('/api/fornecedores/catalogo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fornecedor: { id: parseInt(fornecedorId) },
+                produto: { id: produto.id },
+                precoCompra: precoCompra
+            })
+        });
+        if (!respCat.ok) throw new Error('Produto criado, mas erro ao vincular fornecedor: ' + await respCat.text());
+
+        msg('msg-produto', '✅ Produto cadastrado e fornecedor vinculado com sucesso!');
+        ['prod-nome', 'prod-cat', 'prod-preco', 'prod-limiar', 'prod-preco-compra']
+            .forEach(id => document.getElementById(id).value = '');
+        document.getElementById('prod-fornecedor').value = '';
         carregarDropdownsModal();
+
     } catch (e) {
         msg('msg-produto', `❌ ${e.message}`, 'erro');
     }
@@ -424,23 +446,23 @@ async function cadastrarProduto() {
 
 async function cadastrarFornecedor() {
     const nome = document.getElementById('forn-nome').value;
-    const tempoEntregaDias = parseInt(document.getElementById('forn-prazo').value);
     const contato = document.getElementById('forn-contato').value;
 
-    if (!nome || !tempoEntregaDias) {
-        msg('msg-forn', '⚠️ Preencha nome e prazo de entrega.', 'erro');
+    if (!nome) {
+        msg('msg-forn', '⚠️ Preencha o nome do fornecedor.', 'erro');
         return;
     }
     try {
         const resp = await fetch('/api/fornecedores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, tempoEntregaDias, contato })
+            body: JSON.stringify({ nome, contato })
         });
         if (!resp.ok) throw new Error(await resp.text());
         msg('msg-forn', '✅ Fornecedor cadastrado com sucesso!');
-        ['forn-nome', 'forn-prazo', 'forn-contato'].forEach(id =>
+        ['forn-nome', 'forn-contato'].forEach(id =>
             document.getElementById(id).value = '');
+        carregarDropdownsModal(); // atualiza o dropdown de fornecedores no cadastro de produto
     } catch (e) {
         msg('msg-forn', `❌ ${e.message}`, 'erro');
     }

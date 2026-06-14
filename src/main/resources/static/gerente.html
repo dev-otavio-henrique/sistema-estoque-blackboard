@@ -8,45 +8,38 @@
 </head>
 <body>
 
-    <!-- ═══ Modal: Compra Avulsa ═══ -->
-    <div id="modal-overlay" class="modal-overlay">
-        <div class="modal">
-            <h3>🛒 Compra Avulsa de Produtos</h3>
-            <p style="font-size:14px; color:#666; margin-bottom:20px;">
-                Compre produtos diretamente sem necessidade de sugestão prévia. 
-                O estoque será atualizado imediatamente após a confirmação.
-            </p>
-
-            <div class="form-group">
-                <label>Loja de destino</label>
-                <select id="modal-loja">
-                    <option value="">Selecione a loja...</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Produto</label>
-                <select id="modal-produto">
-                    <option value="">Selecione o produto...</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Quantidade a comprar</label>
-                <input type="number" id="modal-quantidade" min="1" value="1">
-            </div>
-
-            <!-- Resultado exibido após a compra ser processada -->
-            <div id="resultado-compra" class="resultado-compra" style="display:none;"></div>
-
-            <div class="modal-acoes">
-                <button class="btn cinza" onclick="fecharModalCompra()">Fechar</button>
-                <button id="btn-finalizar-compra" class="btn verde" onclick="finalizarCompraAvulsa()">
-                    💰 Finalizar Compra
-                </button>
-            </div>
-        </div>
-    </div>
+	  <!-- ═══ Modal: Compra Avulsa ═══ -->
+	<div id="modal-overlay" class="modal-overlay">
+	    <div class="modal">
+	        <h3>🛒 Compra Avulsa de Produtos</h3>
+	        <p style="font-size:14px; color:#666; margin-bottom:20px;">
+	            Compre produtos diretamente sem necessidade de sugestão prévia.
+	            O estoque será atualizado imediatamente após a confirmação.
+	        </p>
+	        <div class="form-group">
+	            <label>Loja de destino</label>
+	            <select id="modal-loja">
+	                <option value="">Selecione a loja...</option>
+	            </select>
+	        </div>
+	        <div class="form-group">
+	            <label>Produto</label>
+	            <select id="modal-produto">
+	                <option value="">Selecione o produto...</option>
+	            </select>
+	        </div>
+	        <div class="form-group">
+	            <label>Quantidade a comprar</label>
+	            <input type="number" id="modal-quantidade" min="1" value="1">
+	        </div>	
+	        <div class="modal-acoes">
+	            <button class="btn cinza" onclick="fecharModalCompra()">Fechar</button>
+	            <button class="btn verde" onclick="finalizarCompraAvulsa()">
+	                💰 Finalizar Compra
+	            </button>
+	        </div>
+	    </div>
+	</div>
 
     <!-- ═══ Cabeçalho ═══ -->
     <div class="header">
@@ -148,53 +141,61 @@
         <div id="tab-cadastros" class="tab-content">
             <h2 class="titulo-secao" style="margin-bottom:20px;">⚙️ Gerenciar Cadastros</h2>
 
-            <!-- Cadastrar Produto -->
-            <div class="card">
-                <h2>🛍️ Cadastrar Novo Produto</h2>
-                <div id="msg-produto"></div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Nome</label>
-                        <input type="text" id="prod-nome" placeholder="Ex: Sabonete Líquido">
-                    </div>
-                    <div class="form-group">
-                        <label>Categoria</label>
-                        <input type="text" id="prod-cat" placeholder="Ex: Higiene">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Preço de venda (R$)</label>
-                        <input type="number" id="prod-preco" min="0" step="0.01" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Limiar crítico (qtd. mínima)</label>
-                        <input type="number" id="prod-limiar" min="1" placeholder="Ex: 15">
-                    </div>
-                </div>
-                <button class="btn azul" onclick="cadastrarProduto()">✅ Cadastrar Produto</button>
-            </div>
+           <!-- Cadastrar Produto -->
+			<div class="card">
+			    <h2>🛍️ Cadastrar Novo Produto</h2>
+			    <div id="msg-produto"></div>
+			    <div class="form-row">
+			        <div class="form-group">
+			            <label>Nome</label>
+			            <input type="text" id="prod-nome" placeholder="Ex: Sabonete Líquido">
+			        </div>
+			        <div class="form-group">
+			            <label>Categoria</label>
+			            <input type="text" id="prod-cat" placeholder="Ex: Higiene">
+			        </div>
+			    </div>
+			    <div class="form-row">
+			        <div class="form-group">
+			            <label>Preço de venda (R$)</label>
+			            <input type="number" id="prod-preco" min="0" step="0.01" placeholder="0.00">
+			        </div>
+			        <div class="form-group">
+			            <label>Limiar crítico (qtd. mínima)</label>
+			            <input type="number" id="prod-limiar" min="1" placeholder="Ex: 15">
+			        </div>
+			    </div>
+			    <div class="form-row">
+			        <div class="form-group">
+			            <label>Fornecedor</label>
+			            <select id="prod-fornecedor">
+			                <option value="">Selecione um fornecedor...</option>
+			            </select>
+			        </div>
+			        <div class="form-group">
+			            <label>Preço de compra do fornecedor (R$)</label>
+			            <input type="number" id="prod-preco-compra" min="0" step="0.01" placeholder="0.00">
+			        </div>
+			    </div>
+			    <button class="btn azul" onclick="cadastrarProduto()">✅ Cadastrar Produto</button>
+			</div>
 
-            <!-- Cadastrar Fornecedor -->
-            <div class="card">
-                <h2>🚚 Cadastrar Fornecedor</h2>
-                <div id="msg-forn"></div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Nome</label>
-                        <input type="text" id="forn-nome" placeholder="Ex: Distribuidora XYZ">
-                    </div>
-                    <div class="form-group">
-                        <label>Prazo de entrega (dias)</label>
-                        <input type="number" id="forn-prazo" min="1" placeholder="Ex: 3">
-                    </div>
-                    <div class="form-group">
-                        <label>Contato</label>
-                        <input type="text" id="forn-contato" placeholder="contato@email.com">
-                    </div>
-                </div>
-                <button class="btn azul" onclick="cadastrarFornecedor()">✅ Cadastrar Fornecedor</button>
-            </div>
+           <!-- Cadastrar Fornecedor -->
+			<div class="card">
+			    <h2>🚚 Cadastrar Fornecedor</h2>
+			    <div id="msg-forn"></div>
+			    <div class="form-row">
+			        <div class="form-group">
+			            <label>Nome</label>
+			            <input type="text" id="forn-nome" placeholder="Ex: Distribuidora XYZ">
+			        </div>
+			        <div class="form-group">
+			            <label>Contato</label>
+			            <input type="text" id="forn-contato" placeholder="contato@email.com">
+			        </div>
+			    </div>
+			    <button class="btn azul" onclick="cadastrarFornecedor()">✅ Cadastrar Fornecedor</button>
+			</div>
         </div>
 
     </div>

@@ -166,7 +166,10 @@ tr.critico:hover td { background: #ffcdd2; }
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
+    min-width: 85px;       
+    text-align: center;   
 }
+
 .badge.ok { background: #c8e6c9; color: #1b5e20; }
 .badge.alerta { background: #ffe0b2; color: #e65100; }
 .badge.critico { background: #ffcdd2; color: #b71c1c; }
