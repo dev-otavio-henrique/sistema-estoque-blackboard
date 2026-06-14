@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Gerente</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>👔 Painel do Gerente</h1>
+            <p>Dashboard da Rede — Arquitetura Blackboard</p>
+        </div>
+        <a href="index.html" class="btn-voltar">← Voltar</a>
+    </div>
+
+    <div class="container">
+
+        <!-- Abas do Gerente -->
+        <div class="tabs">
+            <button class="tab-btn ativo" onclick="mostrarTab('dashboard', this)">
+                📊 Dashboard da Rede
+            </button>
+            <button class="tab-btn" onclick="mostrarTab('sugestoes', this)">
+                🔔 Sugestões de Reposição
+                <!-- Badge vermelho que mostra quantas sugestões pendentes existem -->
+                <span id="badge" class="badge-num" style="display:none"></span>
+            </button>
+            <button class="tab-btn" onclick="mostrarTab('cadastros', this)">
+                ⚙️ Cadastros
+            </button>
+        </div>
+
+        <!-- ═══ ABA 1: Dashboard da Rede (O Blackboard visualmente) ═══ -->
+        <div id="tab-dashboard" class="tab-content ativo">
+
+            <div class="topo-secao">
+                <span class="titulo-secao">🗂️ Estado Atual do Blackboard</span>
+                <span class="refresh-info" id="info-dashboard">⟳ Atualizando...</span>
+            </div>
+
+            <!-- Caixa explicativa para a apresentação -->
+            <div class="alerta info" style="margin-bottom:20px;">
+                💡 <strong>Blackboard:</strong> Esta tela representa o espaço de conhecimento 
+                compartilhado. Todos os módulos especialistas leem e escrevem aqui. 
+                As cores indicam o estado de saúde do estoque de toda a rede.
+            </div>
+
+            <!-- Cards das lojas preenchidos pelo JS -->
+            <div id="dashboard-content">
+                <div class="loading">Carregando estado da rede...</div>
+            </div>
+        </div>
+
+        <!-- ═══ ABA 2: Sugestões de Reposição ═══ -->
+        <div id="tab-sugestoes" class="tab-content">
+
+            <div class="topo-secao">
+                <span class="titulo-secao">🤖 Sugestões do Especialista de Reposição</span>
+                <button class="btn cinza sm" onclick="carregarSugestoes()">🔄 Atualizar agora</button>
+            </div>
+
+            <div class="alerta info" style="margin-bottom:20px;">
+                💡 Estas sugestões foram geradas <strong>automaticamente</strong> pelo trigger do 
+                banco de dados (Blackboard), sem nenhuma intervenção manual. Quando o estoque de 
+                algum produto cruzou o limiar crítico, o banco notificou o Especialista de Reposição.
+            </div>
+
+            <!-- Lista de sugestões preenchida pelo JS -->
+            <div id="sugestoes-content">
+                <div class="loading">Carregando sugestões...</div>
+            </div>
+        </div>
+
+        <!-- ═══ ABA 3: Cadastros ═══ -->
+        <div id="tab-cadastros" class="tab-content">
+
+            <h2 class="titulo-secao" style="margin-bottom:20px;">⚙️ Gerenciar Cadastros</h2>
+
+            <!-- Configurar Estoque Inicial -->
+            <div class="card">
+                <h2>📦 Configurar Estoque Inicial</h2>
+                <p style="color:#666; font-size:14px; margin-bottom:16px;">
+                    Define a quantidade de um produto em uma loja. 
+                    Use isso para preparar o ambiente antes da demonstração.
+                </p>
+                <div id="msg-estoque"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Loja</label>
+                        <select id="est-loja"><option value="">Selecione...</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Produto</label>
+                        <select id="est-produto"><option value="">Selecione...</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade</label>
+                        <input type="number" id="est-qtd" min="0" value="50">
+                    </div>
+                </div>
+                <button class="btn azul" onclick="configurarEstoque()">📦 Salvar Estoque</button>
+            </div>
+
+            <!-- Cadastrar Produto -->
+            <div class="card">
+                <h2>🛍️ Cadastrar Novo Produto</h2>
+                <div id="msg-produto"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="prod-nome" placeholder="Ex: Sabonete Líquido">
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <input type="text" id="prod-cat" placeholder="Ex: Higiene">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Preço de venda (R$)</label>
+                        <input type="number" id="prod-preco" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Limiar crítico (qtd. mínima)</label>
+                        <input type="number" id="prod-limiar" min="1" placeholder="Ex: 15">
+                    </div>
+                </div>
+                <button class="btn azul" onclick="cadastrarProduto()">✅ Cadastrar Produto</button>
+            </div>
+
+            <!-- Cadastrar Fornecedor -->
+            <div class="card">
+                <h2>🚚 Cadastrar Fornecedor</h2>
+                <div id="msg-forn"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="forn-nome" placeholder="Ex: Distribuidora XYZ">
+                    </div>
+                    <div class="form-group">
+                        <label>Prazo de entrega (dias)</label>
+                        <input type="number" id="forn-prazo" min="1" placeholder="Ex: 3">
+                    </div>
+                    <div class="form-group">
+                        <label>Contato</label>
+                        <input type="text" id="forn-contato" placeholder="contato@email.com">
+                    </div>
+                </div>
+                <button class="btn azul" onclick="cadastrarFornecedor()">✅ Cadastrar Fornecedor</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ─── Inicializa a página ───
+        function init() {
+            carregarDashboard();
+            carregarSugestoes();
+            carregarDropdownsCadastros();
+
+            // Auto-refresh: atualiza o dashboard a cada 10 segundos
+            setInterval(carregarDashboard, 10000);
+
+            // Auto-refresh de sugestões a cada 8 segundos.
+            // ISSO É FUNDAMENTAL PARA A DEMONSTRAÇÃO:
+            // Após o operador registrar uma venda crítica, dentro de 8 segundos
+            // a sugestão aparece aqui sem nenhum clique do professor.
+            setInterval(carregarSugestoes, 8000);
+        }
+
+        // ─── Helpers de status ───
+        function status(qtd, limiar) {
+            if (qtd < limiar) return 'critico';
+            if (qtd <= limiar * 1.5) return 'alerta';
+            return 'ok';
+        }
+        function labelStatus(s) {
+            if (s === 'critico') return '🔴 Crítico';
+            if (s === 'alerta') return '🟡 Alerta';
+            return '🟢 Ok';
+        }
+
+        // ─── Exibe mensagem temporária de feedback ───
+        function msg(elementId, texto, tipo = 'sucesso') {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="alerta ${tipo}">${texto}</div>`;
+            setTimeout(() => el.innerHTML = '', 4000);
+        }
+
+        // ═══ ABA 1: Dashboard ═══
+
+        // Busca todo o estoque da rede e monta o dashboard lado a lado por loja
+        async function carregarDashboard() {
+            try {
+                // Busca estoques e lojas em paralelo (Promise.all é mais rápido que sequencial)
+                const [estoques, lojas] = await Promise.all([
+                    fetch('/api/estoque').then(r => r.json()),
+                    fetch('/api/lojas').then(r => r.json())
+                ]);
+
+                montarDashboard(estoques, lojas);
+
+                const hora = new Date().toLocaleTimeString('pt-BR');
+                document.getElementById('info-dashboard').textContent = `⟳ ${hora}`;
+
+            } catch (e) {
+                document.getElementById('dashboard-content').innerHTML =
+                    `<div class="alerta erro">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        // Monta o HTML dos cards de loja lado a lado
+        function montarDashboard(estoques, lojas) {
+            if (!lojas.length) {
+                document.getElementById('dashboard-content').innerHTML =
+                    '<div class="alerta info">Nenhuma loja cadastrada ainda.</div>';
+                return;
+            }
+
+            let html = '<div class="dashboard-lojas">';
+
+            lojas.forEach(loja => {
+                // Filtra apenas os estoques desta loja
+                const estoqueLoja = estoques.filter(e => e.loja.id === loja.id);
+
+                html += `
+                    <div class="loja-card">
+                        <div class="loja-header">🏬 ${loja.nome}</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Qtd.</th>
+                                    <th>Limiar</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                if (!estoqueLoja.length) {
+                    html += '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sem estoque</td></tr>';
+                } else {
+                    estoqueLoja.forEach(e => {
+                        const s = status(e.quantidadeAtual, e.produto.limiar_critico);
+                        html += `
+                            <tr class="${s}">
+                                <td>${e.produto.nome}</td>
+                                <td><strong>${e.quantidadeAtual}</strong></td>
+                                <td>${e.produto.limiar_critico}</td>
+                                <td><span class="badge ${s}">${labelStatus(s)}</span></td>
+                            </tr>`;
+                    });
+                }
+
+                html += '</tbody></table></div>';
+            });
+
+            html += '</div>';
+            document.getElementById('dashboard-content').innerHTML = html;
+        }
+
+        // ═══ ABA 2: Sugestões ═══
+
+        async function carregarSugestoes() {
+            try {
+                const sugestoes = await fetch('/api/sugestoes/pendentes').then(r => r.json());
+
+                // Atualiza o badge vermelho de contagem na aba
+                const badge = document.getElementById('badge');
+                if (sugestoes.length > 0) {
+                    badge.textContent = sugestoes.length;
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                montarSugestoes(sugestoes);
+
+            } catch (e) {
+                document.getElementById('sugestoes-content').innerHTML =
+                    `<div class="alerta erro">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        // Monta os cards de sugestão
+        function montarSugestoes(sugestoes) {
+            const cont = document.getElementById('sugestoes-content');
+
+            if (!sugestoes.length) {
+                cont.innerHTML = `
+                    <div class="alerta sucesso" style="text-align:center; padding:32px;">
+                        ✅ <strong>Nenhuma sugestão pendente.</strong><br>
+                        <small style="color:#555;">O sistema continua monitorando o estoque automaticamente.</small>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+
+            sugestoes.forEach(s => {
+                const eTransf = s.tipoAcao === 'TRANSFERENCIA';
+
+                // Monta a linha de detalhes conforme o tipo da sugestão
+                const detalhe = eTransf
+                    ? `<strong>De:</strong> ${s.lojaOrigem?.nome || '—'} &nbsp;→&nbsp; <strong>Para:</strong> ${s.lojaDestino?.nome || '—'}`
+                    : `<strong>Fornecedor:</strong> ${s.fornecedor?.nome || '—'} &nbsp;→&nbsp; <strong>Destino:</strong> ${s.lojaDestino?.nome || '—'}`;
+
+                html += `
+                    <div class="sugestao-card ${eTransf ? '' : 'compra'}">
+
+                        <!-- Cabeçalho do card -->
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                            <div>
+                                <div class="sugestao-titulo">
+                                    ${eTransf ? '🔄 Transferência entre lojas' : '🛒 Ordem de compra'} — 
+                                    <strong>${s.produto.nome}</strong>
+                                </div>
+                                <div class="sugestao-detalhe">
+                                    ${detalhe} &nbsp;|&nbsp;
+                                    <strong>Qtd. recomendada:</strong> ${s.quantidadeRecomendada} unidades
+                                </div>
+                            </div>
+                            <span class="badge pendente">${s.status}</span>
+                        </div>
+
+                        <!-- Justificativa gerada automaticamente pelo sistema -->
+                        <div class="sugestao-justificativa">
+                            💬 <strong>Justificativa automática:</strong> ${s.justificativa}
+                        </div>
+
+                        <!-- Botões de ação do gerente -->
+                        <div class="sugestao-acoes">
+                            <button class="btn verde sm" onclick="acao(${s.id}, 'executada')">
+                                ✅ Executar (atualiza estoque)
+                            </button>
+                            <button class="btn laranja sm" onclick="acao(${s.id}, 'aprovar')">
+                                👍 Aprovar
+                            </button>
+                            <button class="btn vermelho sm" onclick="acao(${s.id}, 'rejeitar')">
+                                ❌ Rejeitar
+                            </button>
+                        </div>
+                    </div>`;
+            });
+
+            cont.innerHTML = html;
+        }
+
+        // Executa uma ação em uma sugestão (aprovar, rejeitar ou executar)
+        async function acao(id, tipo) {
+            try {
+                const resp = await fetch(`/api/sugestoes/${id}/${tipo}`, { method: 'PATCH' });
+                if (!resp.ok) throw new Error(await resp.text());
+
+                // Recarrega sugestões e dashboard após ação
+                await carregarSugestoes();
+                if (tipo === 'executada') {
+                    await carregarDashboard(); // Estoque mudou, atualiza o dashboard
+                    alert('✅ Sugestão executada! O estoque foi atualizado automaticamente.');
+                }
+            } catch (e) {
+                alert('❌ Erro: ' + e.message);
+            }
+        }
+
+        // ═══ ABA 3: Cadastros ═══
+
+        // Preenche os dropdowns de loja e produto nos formulários de cadastro
+        async function carregarDropdownsCadastros() {
+            try {
+                const [lojas, produtos] = await Promise.all([
+                    fetch('/api/lojas').then(r => r.json()),
+                    fetch('/api/produtos').then(r => r.json())
+                ]);
+
+                const selLoja = document.getElementById('est-loja');
+                lojas.forEach(l => {
+                    selLoja.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+                });
+
+                const selProd = document.getElementById('est-produto');
+                produtos.forEach(p => {
+                    selProd.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                });
+            } catch (e) {
+                console.error('Erro ao carregar dropdowns:', e);
+            }
+        }
+
+        async function configurarEstoque() {
+            const lojaId = document.getElementById('est-loja').value;
+            const produtoId = document.getElementById('est-produto').value;
+            const quantidade = parseInt(document.getElementById('est-qtd').value);
+
+            if (!lojaId || !produtoId || isNaN(quantidade)) {
+                msg('msg-estoque', '⚠️ Preencha todos os campos.', 'erro');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/estoque/inicial', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ produtoId: +produtoId, lojaId: +lojaId, quantidade })
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                msg('msg-estoque', '✅ Estoque configurado com sucesso!');
+                carregarDashboard(); // Atualiza o dashboard
+            } catch (e) {
+                msg('msg-estoque', `❌ ${e.message}`, 'erro');
+            }
+        }
+
+        async function cadastrarProduto() {
+            const nome = document.getElementById('prod-nome').value;
+            const categoria = document.getElementById('prod-cat').value;
+            const preco_venda = parseFloat(document.getElementById('prod-preco').value);
+            const limiar_critico = parseInt(document.getElementById('prod-limiar').value);
+
+            if (!nome || !preco_venda || !limiar_critico) {
+                msg('msg-produto', '⚠️ Preencha nome, preço e limiar.', 'erro');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/produtos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, categoria, preco_venda, limiar_critico })
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                msg('msg-produto', '✅ Produto cadastrado!');
+                // Limpa o formulário
+                ['prod-nome', 'prod-cat', 'prod-preco', 'prod-limiar'].forEach(id =>
+                    document.getElementById(id).value = '');
+                carregarDropdownsCadastros(); // Atualiza os dropdowns
+            } catch (e) {
+                msg('msg-produto', `❌ ${e.message}`, 'erro');
+            }
+        }
+
+        async function cadastrarFornecedor() {
+            const nome = document.getElementById('forn-nome').value;
+            const tempoEntregaDias = parseInt(document.getElementById('forn-prazo').value);
+            const contato = document.getElementById('forn-contato').value;
+
+            if (!nome || !tempoEntregaDias) {
+                msg('msg-forn', '⚠️ Preencha nome e prazo de entrega.', 'erro');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/fornecedores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, tempoEntregaDias, contato })
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                msg('msg-forn', '✅ Fornecedor cadastrado!');
+                ['forn-nome', 'forn-prazo', 'forn-contato'].forEach(id =>
+                    document.getElementById(id).value = '');
+            } catch (e) {
+                msg('msg-forn', `❌ ${e.message}`, 'erro');
+            }
+        }
+
+        // ─── Controla qual aba está ativa ───
+        function mostrarTab(tabId, botao) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('ativo'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('ativo'));
+            document.getElementById('tab-' + tabId).classList.add('ativo');
+            botao.classList.add('ativo');
+        }
+
+        // Inicia tudo
+        init();
+    </script>
+</body>
+</html>

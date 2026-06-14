@@ -3,70 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Estoque</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 10px;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #resultado {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e8f4f8;
-            border-left: 4px solid #007bff;
-            border-radius: 4px;
-            display: none;
-        }
-    </style>
+    <title>Sistema de Estoque — Blackboard</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+    <!-- Cabeçalho -->
+    <div class="header">
+        <div>
+            <h1>🏪 Sistema de Controle de Estoque</h1>
+            <p>Arquitetura Blackboard — CEFET/RJ 2026.1</p>
+        </div>
+    </div>
+
+    <!-- Título da tela -->
+    <div class="pagina-selecao">
+        <h2>Selecione seu perfil</h2>
+        <p>Cada perfil representa um módulo da arquitetura Blackboard</p>
+    </div>
+
+    <!-- Os três cards de acesso -->
     <div class="container">
-        <h1>🏪 Sistema de Controle de Estoque</h1>
-        <p>Arquitetura Blackboard com PostgreSQL</p>
-        
-        <button onclick="testarConexao()">Testar Conexão com Backend</button>
-        
-        <div id="resultado"></div>
+        <div class="perfis-container">
+
+            <!-- Operador: Loja Norte -->
+            <div class="perfil-card" onclick="entrarLoja(1, 'Loja Norte')">
+                <div class="icone">🏬</div>
+                <h3>Loja Norte</h3>
+                <p class="subtitulo">Especialista de Loja</p>
+                <p class="descricao">
+                    Visualize o estoque da Loja Norte e registre as vendas realizadas.
+                    Este perfil representa o módulo especialista da Loja Norte.
+                </p>
+                <button class="btn azul" style="width:100%">Entrar como Loja Norte</button>
+            </div>
+
+            <!-- Operador: Loja Sul -->
+            <div class="perfil-card" onclick="entrarLoja(2, 'Loja Sul')">
+                <div class="icone">🏪</div>
+                <h3>Loja Sul</h3>
+                <p class="subtitulo">Especialista de Loja</p>
+                <p class="descricao">
+                    Visualize o estoque da Loja Sul e registre as vendas realizadas.
+                    Este perfil representa o módulo especialista da Loja Sul.
+                </p>
+                <button class="btn azul" style="width:100%">Entrar como Loja Sul</button>
+            </div>
+
+            <!-- Gerente -->
+            <div class="perfil-card" onclick="entrarGerente()">
+                <div class="icone">👔</div>
+                <h3>Gerente</h3>
+                <p class="subtitulo">Administrador da Rede</p>
+                <p class="descricao">
+                    Veja o estado do Blackboard, as sugestões automáticas do 
+                    Especialista de Reposição e gerencie cadastros.
+                </p>
+                <button class="btn verde" style="width:100%">Entrar como Gerente</button>
+            </div>
+
+        </div>
     </div>
 
     <script>
-        function testarConexao() {
-            fetch('/api/teste')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('resultado').style.display = 'block';
-                    document.getElementById('resultado').textContent = '✅ ' + data;
-                })
-                .catch(error => {
-                    document.getElementById('resultado').style.display = 'block';
-                    document.getElementById('resultado').textContent = '❌ Erro: ' + error;
-                });
+        // Vai para a página da loja passando o ID e nome na URL
+        function entrarLoja(id, nome) {
+            window.location.href = `loja.html?id=${id}&nome=${encodeURIComponent(nome)}`;
+        }
+
+        // Vai para a página do gerente
+        function entrarGerente() {
+            window.location.href = 'gerente.html';
         }
     </script>
 </body>

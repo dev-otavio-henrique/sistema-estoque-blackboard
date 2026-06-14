@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operador de Loja</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Cabeçalho com nome da loja (preenchido pelo JS) -->
+    <div class="header">
+        <div>
+            <h1 id="titulo-loja">🏬 Carregando...</h1>
+            <p>Perfil: Operador de Loja (Especialista de Loja)</p>
+        </div>
+        <a href="index.html" class="btn-voltar">← Voltar</a>
+    </div>
+
+    <div class="container">
+
+        <!-- Navegação por abas -->
+        <div class="tabs">
+            <button class="tab-btn ativo" onclick="mostrarTab('estoque', this)">
+                📦 Painel de Estoque
+            </button>
+            <button class="tab-btn" onclick="mostrarTab('venda', this)">
+                💰 Registrar Venda
+            </button>
+        </div>
+
+        <!-- ═══ ABA 1: Painel de Estoque ═══ -->
+        <div id="tab-estoque" class="tab-content ativo">
+            <div class="card">
+
+                <!-- Cabeçalho da seção com indicador de atualização -->
+                <div class="topo-secao">
+                    <span class="titulo-secao">Estoque Atual da Loja</span>
+                    <span class="refresh-info" id="info-atualizacao">
+                        ⟳ Atualizando a cada 5 segundos...
+                    </span>
+                </div>
+
+                <!-- Legenda explicando as cores -->
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+                    <span class="badge ok">🟢 Ok — acima do limiar</span>
+                    <span class="badge alerta">🟡 Alerta — próximo ao limiar</span>
+                    <span class="badge critico">🔴 Crítico — abaixo do limiar</span>
+                </div>
+
+                <!-- Tabela preenchida pelo JavaScript -->
+                <div id="tabela-estoque">
+                    <div class="loading">Carregando estoque...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ ABA 2: Registrar Venda ═══ -->
+        <div id="tab-venda" class="tab-content">
+            <div class="card">
+                <h2>Registrar Nova Venda</h2>
+
+                <!-- Mensagem de sucesso ou erro -->
+                <div id="msg-venda"></div>
+
+                <div class="form-group">
+                    <label for="select-produto">Produto vendido</label>
+                    <select id="select-produto">
+                        <option value="">Selecione um produto...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="input-quantidade">Quantidade vendida</label>
+                    <input type="number" id="input-quantidade" min="1" value="1">
+                </div>
+
+                <button class="btn verde" onclick="registrarVenda()">
+                    ✅ Registrar Venda
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ─── Variáveis globais desta página ───
+        let lojaId = null;
+        let lojaNome = null;
+
+        // ─── Inicializa a página ───
+        // Lê os parâmetros da URL (ex: loja.html?id=1&nome=Loja%20Norte)
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            lojaId = params.get('id');
+            lojaNome = decodeURIComponent(params.get('nome') || 'Loja');
+
+            // Se não veio ID na URL, volta para o início
+            if (!lojaId) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Atualiza o título com o nome da loja
+            document.getElementById('titulo-loja').textContent = '🏬 ' + lojaNome;
+            document.title = lojaNome;
+
+            // Carrega os dados da página
+            carregarEstoque();
+            carregarProdutosDropdown();
+
+            // Recarrega o estoque a cada 5 segundos automaticamente
+            setInterval(carregarEstoque, 5000);
+        }
+
+        // ─── Calcula o status do produto baseado na quantidade ───
+        function status(quantidade, limiar) {
+            if (quantidade < limiar) return 'critico';
+            if (quantidade <= limiar * 1.5) return 'alerta';
+            return 'ok';
+        }
+
+        function labelStatus(s) {
+            if (s === 'critico') return '🔴 Crítico';
+            if (s === 'alerta') return '🟡 Alerta';
+            return '🟢 Ok';
+        }
+
+        // ─── Busca e exibe o estoque da loja na tabela ───
+        async function carregarEstoque() {
+            try {
+                const resp = await fetch(`/api/estoque/loja/${lojaId}`);
+                if (!resp.ok) throw new Error('Falha ao buscar estoque');
+
+                const estoques = await resp.json();
+                montarTabela(estoques);
+
+                // Mostra hora da última atualização
+                const hora = new Date().toLocaleTimeString('pt-BR');
+                document.getElementById('info-atualizacao').textContent =
+                    `⟳ Última atualização: ${hora}`;
+
+            } catch (e) {
+                document.getElementById('tabela-estoque').innerHTML =
+                    `<div class="alerta erro">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        // ─── Monta o HTML da tabela de estoque ───
+        function montarTabela(estoques) {
+            if (!estoques.length) {
+                document.getElementById('tabela-estoque').innerHTML =
+                    '<div class="alerta info">Nenhum produto no estoque desta loja.</div>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th>Qtd. Atual</th>
+                            <th>Limiar Crítico</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            estoques.forEach(e => {
+                // Nota: limiar_critico usa underscore porque o campo Java usa underscore
+                const s = status(e.quantidadeAtual, e.produto.limiar_critico);
+                html += `
+                    <tr class="${s}">
+                        <td><strong>${e.produto.nome}</strong></td>
+                        <td>${e.produto.categoria || '—'}</td>
+                        <td><strong style="font-size:16px">${e.quantidadeAtual}</strong></td>
+                        <td>${e.produto.limiar_critico}</td>
+                        <td><span class="badge ${s}">${labelStatus(s)}</span></td>
+                    </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('tabela-estoque').innerHTML = html;
+        }
+
+        // ─── Preenche o dropdown de produtos para o formulário de venda ───
+        async function carregarProdutosDropdown() {
+            try {
+                const resp = await fetch('/api/produtos');
+                const produtos = await resp.json();
+
+                const sel = document.getElementById('select-produto');
+                sel.innerHTML = '<option value="">Selecione um produto...</option>';
+                produtos.forEach(p => {
+                    sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                });
+            } catch (e) {
+                console.error('Erro ao carregar produtos:', e);
+            }
+        }
+
+        // ─── Envia a venda para o backend (chama o Especialista de Loja) ───
+        async function registrarVenda() {
+            const produtoId = document.getElementById('select-produto').value;
+            const quantidade = parseInt(document.getElementById('input-quantidade').value);
+            const msgDiv = document.getElementById('msg-venda');
+
+            // Validações básicas antes de chamar a API
+            if (!produtoId) {
+                msgDiv.innerHTML = '<div class="alerta erro">⚠️ Selecione um produto.</div>';
+                return;
+            }
+            if (!quantidade || quantidade <= 0) {
+                msgDiv.innerHTML = '<div class="alerta erro">⚠️ Informe uma quantidade válida.</div>';
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/vendas/registrar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        produtoId: parseInt(produtoId),
+                        lojaId: parseInt(lojaId),
+                        quantidade: quantidade
+                    })
+                });
+
+                if (!resp.ok) throw new Error(await resp.text());
+
+                const venda = await resp.json();
+
+                msgDiv.innerHTML = `
+                    <div class="alerta sucesso">
+                        ✅ Venda registrada! 
+                        Produto: <strong>${venda.produto.nome}</strong> | 
+                        Quantidade: <strong>${venda.quantidade}</strong> un.
+                        <br><small>Se o estoque ficou crítico, o Blackboard notificará o Especialista de Reposição automaticamente.</small>
+                    </div>`;
+
+                // Limpa o formulário
+                document.getElementById('select-produto').value = '';
+                document.getElementById('input-quantidade').value = '1';
+
+                // Atualiza o estoque imediatamente
+                carregarEstoque();
+
+            } catch (e) {
+                msgDiv.innerHTML = `<div class="alerta erro">❌ ${e.message}</div>`;
+            }
+        }
+
+        // ─── Controla qual aba está visível ───
+        // O parâmetro 'botao' é o próprio botão clicado (passado como 'this' no HTML)
+        function mostrarTab(tabId, botao) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('ativo'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('ativo'));
+            document.getElementById('tab-' + tabId).classList.add('ativo');
+            botao.classList.add('ativo');
+        }
+
+        // Inicia tudo quando a página carrega
+        init();
+    </script>
+</body>
+</html>
