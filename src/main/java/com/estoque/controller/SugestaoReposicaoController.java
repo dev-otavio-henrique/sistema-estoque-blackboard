@@ -30,6 +30,11 @@ public class SugestaoReposicaoController {
     public List<SugestaoReposicao> obterExecutadas() {
         return sugestaoService.obterExecutadas();
     }
+    
+    @GetMapping("/aprovadas")
+    public List<SugestaoReposicao> obterAprovadas() {
+        return sugestaoService.obterAprovadas();
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<SugestaoReposicao> obterPorId(@PathVariable Long id) {

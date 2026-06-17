@@ -38,6 +38,12 @@ public class SugestaoReposicaoService {
     public List<SugestaoReposicao> obterExecutadas() {
         return sugestaoRepository.findByStatus("EXECUTADA");
     }
+    
+	// Retorna sugestões já aprovadas mas ainda não executadas — o frontend usa isso
+	// para saber quais produtos estão "Em Reposição"
+    public List<SugestaoReposicao> obterAprovadas() {
+        return sugestaoRepository.findByStatus("APROVADA");
+    }
 
     public Optional<SugestaoReposicao> obterPorId(Long id) {
         return sugestaoRepository.findById(id);
@@ -72,7 +78,8 @@ public class SugestaoReposicaoService {
             .orElseThrow(() -> new RuntimeException("Produto não encontrado: ID " + produtoId));
         Loja loja = lojaRepository.findById(lojaId)
             .orElseThrow(() -> new RuntimeException("Loja não encontrada: ID " + lojaId));
-        Estoque estoque = estoqueRepository.findByProdutoAndLoja(produto, loja)
+
+        estoqueRepository.findByProdutoAndLoja(produto, loja)
             .orElseGet(() -> {
                 Estoque novo = new Estoque();
                 novo.setProduto(produto);
@@ -85,15 +92,14 @@ public class SugestaoReposicaoService {
         FornecedorCatalogo melhorFornecedor = fornecedores.stream()
             .min((a, b) -> a.getPrecoCompra().compareTo(b.getPrecoCompra()))
             .orElse(null);
-        int novoEstoque = estoque.getQuantidadeAtual() + quantidade;
-        estoque.setQuantidadeAtual(novoEstoque);
-        estoqueRepository.save(estoque);
+
         SugestaoReposicao compra = new SugestaoReposicao();
         compra.setTipoAcao("ORDEM_COMPRA");
         compra.setProduto(produto);
         compra.setLojaDestino(loja);
         compra.setQuantidadeRecomendada(quantidade);
-        compra.setStatus("EXECUTADA");
+        compra.setStatus("APROVADA");
+
         String justificativa = "Compra avulsa de " + quantidade + "x " + produto.getNome()
             + " para " + loja.getNome() + ".";
 
@@ -105,8 +111,10 @@ public class SugestaoReposicaoService {
             justificativa += " Nenhum fornecedor cadastrado para este produto.";
         }
         compra.setJustificativa(justificativa);
+
         System.out.println("[COMPRA AVULSA] " + quantidade + "x " + produto.getNome()
-            + " → " + loja.getNome() + " | Novo estoque: " + novoEstoque);
+            + " → " + loja.getNome() + " | Aprovada, aguardando execução...");
+
         return sugestaoRepository.save(compra);
     }
     

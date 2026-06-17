@@ -34,43 +34,43 @@ public class EspecialistaReposicaoService {
         Estoque estoqueCritico = estoqueRepository
             .findByProdutoAndLoja(produto, lojaDestino).orElseThrow();
 
-        // Calcula a quantidade recomendada de reposição
-        // (dobro do limiar crítico é uma heurística simples e boa para demonstração)
-        int quantidadeRecomendada = produto.getLimiar_critico() * 2;
+        int limiar = produto.getLimiar_critico();
+        // Regra de transferência: a loja de origem precisa ter >= 6x o limiar para
+        // ser considerada "com excedente". A quantidade transferida é sempre
+        // exatamente 3x o limiar.
+        int limiarExcedente = limiar * 6;
+        int quantidadeTransferencia = limiar * 3;
 
-        // Primeira tentativa: verificar se outra loja tem excedente
+        // Primeira tentativa: verificar se outra loja tem excedente suficiente
         List<Estoque> estoquesDaRede = estoqueRepository.findByProduto(produto);
 
         for (Estoque estoque : estoquesDaRede) {
-            // Ignora a loja que está com problema
             if (estoque.getLoja().getId().equals(lojaDestinoId)) continue;
-            // Verifica se essa loja tem excedente (mais que o dobro do limiar)
-            boolean temExcedente = estoque.getQuantidadeAtual()
-                > produto.getLimiar_critico() * 2;
+            boolean temExcedente = estoque.getQuantidadeAtual() >= limiarExcedente;
             if (temExcedente) {
-                // Gera sugestão de TRANSFERÊNCIA entre lojas
                 SugestaoReposicao sugestao = new SugestaoReposicao();
                 sugestao.setTipoAcao("TRANSFERENCIA");
                 sugestao.setProduto(produto);
                 sugestao.setLojaOrigem(estoque.getLoja());
                 sugestao.setLojaDestino(lojaDestino);
-                sugestao.setQuantidadeRecomendada(quantidadeRecomendada);
+                sugestao.setQuantidadeRecomendada(quantidadeTransferencia);
                 sugestao.setJustificativa(
                     "Estoque crítico em " + lojaDestino.getNome() +
-                    " (" + estoqueCritico.getQuantidadeAtual() + " unidades). " +
-                    estoque.getLoja().getNome() + " tem excedente de " +
-                    estoque.getQuantidadeAtual() + " unidades."
+                    " (" + estoqueCritico.getQuantidadeAtual() + " unidades, limiar " + limiar + "). " +
+                    estoque.getLoja().getNome() + " possui excedente de " +
+                    estoque.getQuantidadeAtual() + " unidades (>= 6x o limiar crítico). " +
+                    "Sugerida transferência de " + quantidadeTransferencia + " unidades (3x o limiar)."
                 );
                 sugestaoReposicaoRepository.save(sugestao);
                 return;
             }
         }
 
-        // Segunda tentativa: sem excedente em nenhuma loja → sugere compra
+        // Segunda tentativa: nenhuma loja com excedente suficiente -> sugere compra de 3 * limiar
+        int quantidadeCompra = limiar * 3;
         List<FornecedorCatalogo> fornecedores =
             fornecedorCatalogoRepository.findByProduto(produto);
         if (!fornecedores.isEmpty()) {
-            // Escolhe o fornecedor com menor preço
             FornecedorCatalogo melhorOpcao = fornecedores.stream()
                 .min((a, b) -> a.getPrecoCompra().compareTo(b.getPrecoCompra())).orElseThrow();
             SugestaoReposicao sugestao = new SugestaoReposicao();
@@ -78,13 +78,13 @@ public class EspecialistaReposicaoService {
             sugestao.setProduto(produto);
             sugestao.setLojaDestino(lojaDestino);
             sugestao.setFornecedor(melhorOpcao.getFornecedor());
-            sugestao.setQuantidadeRecomendada(quantidadeRecomendada);
+            sugestao.setQuantidadeRecomendada(quantidadeCompra);
             sugestao.setJustificativa(
                 "Estoque crítico em " + lojaDestino.getNome() +
                 " (" + estoqueCritico.getQuantidadeAtual() + " unidades). " +
-                "Sem excedente em outras lojas. Fornecedor sugerido: " +
-                melhorOpcao.getFornecedor().getNome() + " com preço de R$ " + 
-                melhorOpcao.getPrecoCompra() + " por unidade."
+                "Nenhuma loja com excedente suficiente (>= 6x o limiar) para transferência. " +
+                "Fornecedor sugerido: " + melhorOpcao.getFornecedor().getNome() +
+                " com preço de R$ " + melhorOpcao.getPrecoCompra() + " por unidade."
             );
             sugestaoReposicaoRepository.save(sugestao);
         }

@@ -24,26 +24,30 @@ function init() {
 }
 
 // ─── Calcula o status visual baseado na quantidade ───
-function status(quantidade, limiar) {
-    if (quantidade < limiar) return 'critico';
-    if (quantidade <= limiar * 1.5) return 'alerta';
-    return 'ok';
+function calculaStatus(quantidade, limiar, temAprovada) {
+    if (quantidade < limiar) {
+        return temAprovada ? 'reposicao' : 'critico';
+    }
+    return 'adequado';
 }
 
 function labelStatus(s) {
     if (s === 'critico') return '🔴 Crítico';
-    if (s === 'alerta') return '🟡 Alerta';
-    return '🟢 Ok';
+    if (s === 'reposicao') return '🟡 Em Reposição';
+    return '🟢 Adequado';
 }
 
 // ─── Busca e exibe o estoque da loja ───
 async function carregarEstoque() {
     try {
-        const resp = await fetch(`/api/estoque/loja/${lojaId}`);
-        if (!resp.ok) throw new Error('Falha ao buscar estoque');
-        const estoques = await resp.json();
-        montarTabela(estoques);
-
+        const [estoques, aprovadas] = await Promise.all([
+            fetch(`/api/estoque/loja/${lojaId}`).then(r => {
+                if (!r.ok) throw new Error('Falha ao buscar estoque');
+                return r.json();
+            }),
+            fetch('/api/sugestoes/aprovadas').then(r => r.json())
+        ]);
+        montarTabela(estoques, aprovadas);
         const hora = new Date().toLocaleTimeString('pt-BR');
         document.getElementById('info-atualizacao').textContent =
             `⟳ Última atualização: ${hora}`;
@@ -54,7 +58,7 @@ async function carregarEstoque() {
 }
 
 // ─── Monta a tabela HTML de estoque ───
-function montarTabela(estoques) {
+function montarTabela(estoques, aprovadas) {
     if (!estoques.length) {
         document.getElementById('tabela-estoque').innerHTML =
             '<div class="alerta info">Nenhum produto no estoque desta loja.</div>';
@@ -75,7 +79,10 @@ function montarTabela(estoques) {
             <tbody>`;
 
     estoques.forEach(e => {
-        const s = status(e.quantidadeAtual, e.produto.limiar_critico);
+        const temAprovada = aprovadas.some(s =>
+            s.produto.id === e.produto.id && s.lojaDestino.id === e.loja.id
+        );
+        const s = calculaStatus(e.quantidadeAtual, e.produto.limiar_critico, temAprovada);
         html += `
             <tr class="${s}">
                 <td><strong>${e.produto.nome}</strong></td>

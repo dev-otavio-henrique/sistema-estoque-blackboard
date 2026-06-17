@@ -152,10 +152,10 @@ td { padding: 11px 12px; border-bottom: 1px solid var(--borda); vertical-align: 
 tr:last-child td { border-bottom: none; }
 
 /* Cores das linhas por status de estoque */
-tr.ok td { background: #f1f8e9; }
-tr.ok:hover td { background: #dcedc8; }
-tr.alerta td { background: #fff8e1; }
-tr.alerta:hover td { background: #ffecb3; }
+tr.adequado td { background: #f1f8e9; }
+tr.adequado:hover td { background: #dcedc8; }
+tr.reposicao td { background: #fff8e1; }
+tr.reposicao:hover td { background: #ffecb3; }
 tr.critico td { background: #ffebee; }
 tr.critico:hover td { background: #ffcdd2; }
 
@@ -170,13 +170,9 @@ tr.critico:hover td { background: #ffcdd2; }
     text-align: center;   
 }
 
-.badge.ok { background: #c8e6c9; color: #1b5e20; }
-.badge.alerta { background: #ffe0b2; color: #e65100; }
+.badge.adequado { background: #c8e6c9; color: #1b5e20; }
+.badge.reposicao { background: #ffe0b2; color: #e65100; }
 .badge.critico { background: #ffcdd2; color: #b71c1c; }
-.badge.pendente { background: #fff3cd; color: #856404; }
-.badge.aprovada { background: #d4edda; color: #155724; }
-.badge.rejeitada { background: #f8d7da; color: #721c24; }
-.badge.executada { background: #d1ecf1; color: #0c5460; }
 
 /* Badge contador de notificações na aba */
 .badge-num {

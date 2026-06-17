@@ -13,16 +13,17 @@ function init() {
 }
 
 // ─── Helpers de status e formatação ───
-function status(qtd, limiar) {
-    if (qtd < limiar) return 'critico';
-    if (qtd <= limiar * 1.5) return 'alerta';
-    return 'ok';
+function calculaStatus(quantidade, limiar, temAprovada) {
+    if (quantidade < limiar) {
+        return temAprovada ? 'reposicao' : 'critico';
+    }
+    return 'adequado';
 }
 
 function labelStatus(s) {
     if (s === 'critico') return '🔴 Crítico';
-    if (s === 'alerta') return '🟡 Alerta';
-    return '🟢 Ok';
+    if (s === 'reposicao') return '🟡 Em Reposição';
+    return '🟢 Adequado';
 }
 
 function formatarData(dataStr) {
@@ -46,11 +47,12 @@ function msg(elementId, texto, tipo = 'sucesso') {
 
 async function carregarDashboard() {
     try {
-        const [estoques, lojas] = await Promise.all([
+        const [estoques, lojas, aprovadas] = await Promise.all([
             fetch('/api/estoque').then(r => r.json()),
-            fetch('/api/lojas').then(r => r.json())
+            fetch('/api/lojas').then(r => r.json()),
+            fetch('/api/sugestoes/aprovadas').then(r => r.json())
         ]);
-        montarDashboard(estoques, lojas);
+        montarDashboard(estoques, lojas, aprovadas);
         const hora = new Date().toLocaleTimeString('pt-BR');
         document.getElementById('info-dashboard').textContent = `⟳ ${hora}`;
     } catch (e) {
@@ -59,7 +61,7 @@ async function carregarDashboard() {
     }
 }
 
-function montarDashboard(estoques, lojas) {
+function montarDashboard(estoques, lojas, aprovadas) {
     if (!lojas.length) {
         document.getElementById('dashboard-content').innerHTML =
             '<div class="alerta info">Nenhuma loja cadastrada ainda.</div>';
@@ -82,7 +84,10 @@ function montarDashboard(estoques, lojas) {
             html += '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sem estoque</td></tr>';
         } else {
             estoqueLoja.forEach(e => {
-                const s = status(e.quantidadeAtual, e.produto.limiar_critico);
+                const temAprovada = aprovadas.some(s =>
+                    s.produto.id === e.produto.id && s.lojaDestino.id === e.loja.id
+                );
+                const s = calculaStatus(e.quantidadeAtual, e.produto.limiar_critico, temAprovada);
                 html += `
                     <tr class="${s}">
                         <td>${e.produto.nome}</td>
@@ -167,9 +172,10 @@ async function acao(id, tipo) {
         if (tipo === 'aprovar') {
             const resp = await fetch(`/api/sugestoes/${id}/aprovar`, { method: 'PATCH' });
             if (!resp.ok) throw new Error(await resp.text());
+
             await carregarSugestoes();
+            await carregarDashboard(); // mostra "Em Reposição" imediatamente
             alert('👍 Sugestão aprovada! Os produtos estão a caminho!');
-            // executa após 10 segundos (simula tempo de compra/transferência)
             setTimeout(async () => {
                 try {
                     const respExec = await fetch(`/api/sugestoes/${id}/executada`, { method: 'PATCH' });
@@ -181,6 +187,7 @@ async function acao(id, tipo) {
                     console.error('[BLACKBOARD] Erro ao executar sugestão automaticamente:', e);
                 }
             }, 10000);
+
         } else if (tipo === 'rejeitar') {
             const resp = await fetch(`/api/sugestoes/${id}/rejeitar`, { method: 'PATCH' });
             if (!resp.ok) throw new Error(await resp.text());
@@ -240,12 +247,10 @@ async function finalizarCompraAvulsa() {
     const lojaId = document.getElementById('modal-loja').value;
     const produtoId = document.getElementById('modal-produto').value;
     const quantidade = parseInt(document.getElementById('modal-quantidade').value);
-
     if (!lojaId || !produtoId || !quantidade || quantidade <= 0) {
         alert('⚠️ Preencha todos os campos com valores válidos.');
         return;
     }
-
     try {
         const resp = await fetch('/api/sugestoes/compra-avulso', {
             method: 'POST',
@@ -256,13 +261,20 @@ async function finalizarCompraAvulsa() {
                 quantidade: quantidade
             })
         });
-
         if (!resp.ok) throw new Error(await resp.text());
-
+        const sugestao = await resp.json();
         fecharModalCompra();
-        alert('✅ Compra finalizada! Os produtos estão a caminho!');
+        await carregarDashboard(); 
+        alert('✅ Compra avulsa aprovada! Os produtos estão a caminho!');
         setTimeout(async () => {
-            await carregarDashboard();
+            try {
+                const respExec = await fetch(`/api/sugestoes/${sugestao.id}/executada`, { method: 'PATCH' });
+                if (respExec.ok) {
+                    await carregarDashboard();
+                }
+            } catch (e) {
+                console.error('[BLACKBOARD] Erro ao executar compra avulsa automaticamente:', e);
+            }
         }, 10000);
 
     } catch (e) {
